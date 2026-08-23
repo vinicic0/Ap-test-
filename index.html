@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Protótipo - Física de Artilharia</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            color: #fff;
+            font-family: monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            aspect-ratio: 16/9;
+            background-color: #2a2a35;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-panel {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+
+        .bar-container {
+            width: 150px;
+            height: 15px;
+            background: #333;
+            border: 1px solid #666;
+            margin-top: 5px;
+            position: relative;
+        }
+
+        .hp-bar { height: 100%; background: #4caf50; width: 100%; transition: width 0.2s; }
+        .p2-hp { background: #f44336; }
+
+        #wind-display {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #03a9f4;
+        }
+
+        #power-bar-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #888;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        #power-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4caf50, #ffeb3b, #f44336);
+        }
+
+        /* CONTROLES MOBILE */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            padding: 0 20px;
+            display: none; /* Ativado via JS em touch */
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+        }
+
+        .btn:active { background: rgba(255, 255, 255, 0.5); }
+        .btn-fire { width: 70px; height: 70px; background: rgba(244, 67, 54, 0.4); border-color: #f44336; }
+        .btn-fire:active { background: rgba(244, 67, 54, 0.8); }
+
+        @media (max-width: 768px) {
+            #mobile-controls { display: flex; }
+            #power-bar-container { bottom: 100px; width: 80%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="1200" height="675"></canvas>
+    
+    <div id="hud">
+        <div class="hud-panel">
+            <div>JOGADOR 1</div>
+            <div class="bar-container"><div id="p1-hp" class="hp-bar"></div></div>
+            <div style="margin-top: 10px;">Ângulo: <span id="p1-angle">45</span>°</div>
+        </div>
+        
+        <div class="hud-panel" id="wind-display">
+            <div>VENTO</div>
+            <div id="wind-arrow">→</div>
+            <div id="wind-value">0.0</div>
+        </div>
+        
+        <div class="hud-panel" style="text-align: right;">
+            <div>ALVO (TESTE)</div>
+            <div class="bar-container"><div id="p2-hp" class="hp-bar p2-hp"></div></div>
+            <div style="margin-top: 10px;" id="status-text">Aguardando...</div>
+        </div>
+    </div>
+
+    <div id="power-bar-container">
+        <div id="power-fill"></div>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="control-group">
+            <div class="btn" id="btn-left">←</div>
+            <div class="btn" id="btn-right">→</div>
+        </div>
+        <div class="control-group">
+            <div class="btn" id="btn-up">↑</div>
+            <div class="btn" id="btn-down">↓</div>
+        </div>
+        <div class="control-group">
+            <div class="btn btn-fire" id="btn-fire">FOGO</div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * PROTÓTIPO FÍSICO DE ARTILHARIA
+ * Foco: Movimento, Mira, Força, Vento, Gravidade, Colisão, Destruição Básica de Terreno e Dano.
+ */
+
+const CONFIG = {
+    WIDTH: 1200,
+    HEIGHT: 675,
+    GRAVITY: 0.15,
+    MAX_POWER: 22,
+    CHARGE_SPEED: 0.3,
+    WIND_MULTIPLIER: 0.01
+};
+
+// ==========================================
+// CLASSES DA FÍSICA E ENTIDADES
+// ==========================================
+
+class Terrain {
+    constructor() {
+        this.points = [];
+        this.generate();
+    }
+
+    generate() {
+        this.points = [];
+        // Gera um terreno contínuo com base em senos (sem abismos)
+        for (let x = 0; x <= CONFIG.WIDTH; x++) {
+            let y = CONFIG.HEIGHT - 150 
+                  + Math.sin(x * 0.005) * 50 
+                  + Math.sin(x * 0.01) * 20;
+            this.points.push(y);
+        }
+    }
+
+    getY(x) {
+        if (x < 0) return this.points[0];
+        if (x >= CONFIG.WIDTH) return this.points[CONFIG.WIDTH - 1];
+        return this.points[Math.floor(x)];
+    }
+
+    deform(cx, cy, radius) {
+        for (let x = Math.floor(cx - radius); x <= Math.ceil(cx + radius); x++) {
+            if (x >= 0 && x < CONFIG.WIDTH) {
+                const distX = Math.abs(x - cx);
+                const depth = Math.sqrt(radius * radius - distX * distX);
+                if (this.points[x] < cy + depth) {
+                    this.points[x] = Math.min(this.points[x] + depth, CONFIG.HEIGHT);
+                }
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = '#4a4a5a';
+        ctx.beginPath();
+        ctx.moveTo(0, CONFIG.HEIGHT);
+        for (let x = 0; x < CONFIG.WIDTH; x++) {
+            ctx.lineTo(x, this.points[x]);
+        }
+        ctx.lineTo(CONFIG.WIDTH, CONFIG.HEIGHT);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Linha do solo
+        ctx.strokeStyle = '#6a6a8a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let x = 0; x < CONFIG.WIDTH; x++) {
+            if (x === 0) ctx.moveTo(x, this.points[x]);
+            else ctx.lineTo(x, this.points[x]);
+        }
+        ctx.stroke();
+    }
+}
+
+class Vehicle {
+    constructor(x, color, isPlayer) {
+        this.x = x;
+        this.y = 0;
+        this.width = 40;
+        this.height = 20;
+        this.color = color;
+        this.isPlayer = isPlayer;
+        this.hp = 100;
+        this.angle = 45;
+        this.speed = 2;
+    }
+
+    update(terrain) {
+        // Fixa o veículo no terreno
+        this.y = terrain.getY(this.x) - this.height / 2;
+    }
+
+    move(dir, terrain) {
+        this.x += dir * this.speed;
+        // Limites do mapa
+        if (this.x < this.width) this.x = this.width;
+        if (this.x > CONFIG.WIDTH - this.width) this.x = CONFIG.WIDTH - this.width;
+        this.update(terrain);
+    }
+
+    aim(dir) {
+        this.angle += dir;
+        if (this.angle < 0) this.angle = 0;
+        if (this.angle > 180) this.angle = 180;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        // Corpo
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+
+        // Canhão
+        if (this.isPlayer) {
+            ctx.rotate(-this.angle * Math.PI / 180);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, -3, 30, 6);
+        }
+
+        ctx.restore();
+        
+        // Nome/HP simples acima
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.round(this.hp)} HP`, this.x, this.y - 25);
+    }
+}
+
+class Projectile {
+    constructor(x, y, angle, power, wind) {
+        this.x = x;
+        this.y = y;
+        const rad = -angle * Math.PI / 180;
+        this.vx = Math.cos(rad) * power;
+        this.vy = Math.sin(rad) * power;
+        this.wind = wind;
+        this.active = true;
+        this.radius = 4;
+        this.history = [];
+    }
+
+    update() {
+        this.history.push({x: this.x, y: this.y});
+        if (this.history.length > 20) this.history.shift();
+
+        // Física
+        this.vx += this.wind * CONFIG.WIND_MULTIPLIER;
+        this.vy += CONFIG.GRAVITY;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Limites
+        if (this.x < -100 || this.x > CONFIG.WIDTH + 100 || this.y > CONFIG.HEIGHT + 100) {
+            this.active = false;
+        }
+    }
+
+    draw(ctx) {
+        // Rastro
+        ctx.beginPath();
+        if (this.history.length > 0) {
+            ctx.moveTo(this.history[0].x, this.history[0].y);
+            for (let i = 1; i < this.history.length; i++) {
+                ctx.lineTo(this.history[i].x, this.history[i].y);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Projétil
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+class Explosion {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.radius = 0;
+        this.maxRadius = 40;
+        this.active = true;
+    }
+
+    update() {
+        this.radius += 2;
+        if (this.radius >= this.maxRadius) {
+            this.active = false;
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = `rgba(255, 100, 0, ${1 - this.radius/this.maxRadius})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// ==========================================
+// GERENCIADOR DO JOGO
+// ==========================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const game = {
+    terrain: new Terrain(),
+    p1: new Vehicle(200, '#4caf50', true),
+    p2: new Vehicle(1000, '#f44336', false),
+    projectile: null,
+    explosions: [],
+    wind: 0,
+    
+    // Estado de input
+    keys: {},
+    isCharging: false,
+    chargeLevel: 0,
+    chargeDir: 1,
+
+    init() {
+        this.p1.update(this.terrain);
+        this.p2.update(this.terrain);
+        this.randomizeWind();
+        this.bindEvents();
+        requestAnimationFrame(() => this.loop());
+    },
+
+    randomizeWind() {
+        this.wind = (Math.random() * 10 - 5).toFixed(1);
+        document.getElementById('wind-value').innerText = Math.abs(this.wind);
+        document.getElementById('wind-arrow').innerText = this.wind >= 0 ? '→' : '←';
+    },
+
+    bindEvents() {
+        window.addEventListener('keydown', e => {
+            this.keys[e.key] = true;
+            if (e.code === 'Space' && !this.projectile && !this.isCharging) {
+                this.isCharging = true;
+                this.chargeLevel = 0;
+            }
+        });
+        window.addEventListener('keyup', e => {
+            this.keys[e.key] = false;
+            if (e.code === 'Space' && this.isCharging) {
+                this.fire();
+            }
+        });
+
+        // Touch Controls
+        const bindTouch = (id, key) => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', e => { e.preventDefault(); this.keys[key] = true; });
+            btn.addEventListener('touchend', e => { e.preventDefault(); this.keys[key] = false; });
+        };
+        bindTouch('btn-left', 'a');
+        bindTouch('btn-right', 'd');
+        bindTouch('btn-up', 'w');
+        bindTouch('btn-down', 's');
+
+        const btnFire = document.getElementById('btn-fire');
+        btnFire.addEventListener('touchstart', e => {
+            e.preventDefault();
+            if (!this.projectile && !this.isCharging) {
+                this.isCharging = true;
+                this.chargeLevel = 0;
+            }
+        });
+        btnFire.addEventListener('touchend', e => {
+            e.preventDefault();
+            if (this.isCharging) this.fire();
+        });
+    },
+
+    fire() {
+        this.isCharging = false;
+        document.getElementById('power-fill').style.width = '0%';
+        
+        const rad = -this.p1.angle * Math.PI / 180;
+        const startX = this.p1.x + Math.cos(rad) * 30;
+        const startY = this.p1.y + Math.sin(rad) * 30;
+        
+        const power = (this.chargeLevel / 100) * CONFIG.MAX_POWER;
+        this.projectile = new Projectile(startX, startY, this.p1.angle, power, parseFloat(this.wind));
+        document.getElementById('status-text').innerText = 'Projétil em voo...';
+    },
+
+    handleInput() {
+        if (this.projectile) return; // Trava input durante o tiro
+
+        if (this.keys['a'] || this.keys['ArrowLeft']) this.p1.move(-1, this.terrain);
+        if (this.keys['d'] || this.keys['ArrowRight']) this.p1.move(1, this.terrain);
+        if (this.keys['w'] || this.keys['ArrowUp']) this.p1.aim(1);
+        if (this.keys['s'] || this.keys['ArrowDown']) this.p1.aim(-1);
+
+        document.getElementById('p1-angle').innerText = Math.round(this.p1.angle);
+
+        if (this.isCharging) {
+            this.chargeLevel += CONFIG.CHARGE_SPEED * 10 * this.chargeDir;
+            if (this.chargeLevel >= 100) { this.chargeLevel = 100; this.chargeDir = -1; }
+            if (this.chargeLevel <= 0) { this.chargeLevel = 0; this.chargeDir = 1; }
+            document.getElementById('power-fill').style.width = `${this.chargeLevel}%`;
+        }
+    },
+
+    checkCollisions() {
+        if (!this.projectile) return;
+
+        let hit = false;
+        let p = this.projectile;
+
+        // Colisão com Terreno
+        if (p.y >= this.terrain.getY(p.x)) {
+            hit = true;
+        }
+
+        // Colisão com Veículos
+        const distP1 = Math.hypot(p.x - this.p1.x, p.y - this.p1.y);
+        const distP2 = Math.hypot(p.x - this.p2.x, p.y - this.p2.y);
+
+        if (distP1 < 25 || distP2 < 25) hit = true;
+
+        if (hit) {
+            this.explosions.push(new Explosion(p.x, p.y));
+            this.terrain.deform(p.x, p.y, 40);
+            
+            this.applyDamage(p.x, p.y, 40, 35); // raio 40, dano máx 35
+
+            this.projectile = null;
+            this.randomizeWind();
+            document.getElementById('status-text').innerText = 'Pronto.';
+            
+            // Reajusta veículos se o chão sumiu
+            this.p1.update(this.terrain);
+            this.p2.update(this.terrain);
+        }
+    },
+
+    applyDamage(ex, ey, radius, maxDamage) {
+        [this.p1, this.p2].forEach(vehicle => {
+            const dist = Math.hypot(vehicle.x - ex, vehicle.y - ey);
+            if (dist < radius) {
+                const damage = maxDamage * (1 - dist / radius);
+                vehicle.hp -= damage;
+                if (vehicle.hp < 0) vehicle.hp = 0;
+            }
+        });
+
+        document.getElementById('p1-hp').style.width = `${this.p1.hp}%`;
+        document.getElementById('p2-hp').style.width = `${this.p2.hp}%`;
+    },
+
+    drawTrajectoryPrediction() {
+        if (this.projectile || !this.isCharging) return;
+
+        ctx.beginPath();
+        const rad = -this.p1.angle * Math.PI / 180;
+        let simX = this.p1.x + Math.cos(rad) * 30;
+        let simY = this.p1.y + Math.sin(rad) * 30;
+        
+        const power = (this.chargeLevel / 100) * CONFIG.MAX_POWER;
+        let simVx = Math.cos(rad) * power;
+        let simVy = Math.sin(rad) * power;
+
+        ctx.moveTo(simX, simY);
+
+        for (let i = 0; i < 60; i++) {
+            simVx += parseFloat(this.wind) * CONFIG.WIND_MULTIPLIER;
+            simVy += CONFIG.GRAVITY;
+            simX += simVx;
+            simY += simVy;
+
+            ctx.lineTo(simX, simY);
+
+            // Interrompe predição se bater no chão simulado
+            if (simY >= this.terrain.getY(simX)) break;
+        }
+
+        ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+    },
+
+    loop() {
+        ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+
+        this.handleInput();
+
+        if (this.projectile) {
+            this.projectile.update();
+            this.checkCollisions();
+        }
+
+        for (let i = this.explosions.length - 1; i >= 0; i--) {
+            this.explosions[i].update();
+            if (!this.explosions[i].active) this.explosions.splice(i, 1);
+        }
+
+        this.terrain.draw(ctx);
+        this.p1.draw(ctx);
+        this.p2.draw(ctx);
+        
+        this.drawTrajectoryPrediction();
+
+        if (this.projectile) this.projectile.draw(ctx);
+        this.explosions.forEach(exp => exp.draw(ctx));
+
+        requestAnimationFrame(() => this.loop());
+    }
+};
+
+game.init();
+
+</script>
+</body>
+</html>
