@@ -1,1 +1,1576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#080c14">
+  <title>Aether-Karts: GunBound Edition (T1/T2/SS)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
 
+    body {
+      background: #06090f;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      overflow: hidden;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 1024px;
+      max-height: 600px;
+      background: #020408;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.9);
+    }
+
+    @media (min-width: 1025px) {
+      #game-container {
+        border: 2px solid #2d333b;
+        border-radius: 12px;
+        height: 600px;
+      }
+    }
+
+    canvas#gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+
+    /* TELAS OVERLAY */
+    .screen-view {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 12, 20, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+      text-align: center;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .hidden { display: none !important; }
+
+    .title-banner {
+      font-size: clamp(30px, 6vw, 46px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #58a6ff, #d2a8ff, #f0883e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: clamp(11px, 3vw, 13px);
+      color: #8b949e;
+      margin-bottom: 12px;
+    }
+
+    .profile-badge {
+      font-size: 12px;
+      color: #58a6ff;
+      background: #161b22;
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid #30363d;
+      margin-bottom: 18px;
+    }
+
+    .btn-main {
+      background: linear-gradient(145deg, #238636, #2ea043);
+      color: #fff;
+      font-size: 15px;
+      font-weight: bold;
+      padding: 12px 28px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(35, 134, 54, 0.4);
+    }
+    .btn-main:active { transform: scale(0.96); }
+
+    .btn-secondary {
+      background: #21262d;
+      color: #c9d1d9;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 12px 18px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* HANGAR RESPONSIVO */
+    .equip-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      width: 100%;
+      max-height: 65vh;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      padding: 4px;
+    }
+
+    @media (min-width: 700px) {
+      .equip-layout {
+        grid-template-columns: 1.1fr 1fr 1fr;
+        max-height: 380px;
+      }
+    }
+
+    .panel-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .panel-box h3 {
+      font-size: 12px;
+      color: #f0883e;
+      margin-bottom: 6px;
+    }
+
+    .slot-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      background: #21262d;
+      padding: 5px 8px;
+      border-radius: 6px;
+    }
+
+    select {
+      background: #0d1117;
+      color: #58a6ff;
+      border: 1px solid #30363d;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      max-width: 140px;
+    }
+
+    .synergy-chip {
+      background: rgba(163, 113, 247, 0.15);
+      border: 1px solid #a371f7;
+      color: #d2a8ff;
+      font-size: 10px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+
+    /* HUD MODERNA */
+    #hud {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-card {
+      background: rgba(13, 17, 23, 0.88);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 6px 12px;
+      width: clamp(125px, 28vw, 195px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .bar-container {
+      width: 100%;
+      background: #21262d;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 3px;
+    }
+
+    .bar-hp { height: 100%; background: #238636; width: 100%; transition: width 0.2s; }
+    .bar-mana { height: 100%; background: #1f6feb; width: 30%; transition: width 0.2s; }
+    .bar-fuel { height: 100%; background: #f0883e; width: 100%; transition: width 0.1s; }
+    .bar-ss { height: 100%; background: linear-gradient(90deg, #8957e5, #d2a8ff); width: 0%; transition: width 0.25s; }
+    .hud-subtext { font-size: 9px; margin-top: 3px; color: #8b949e; white-space: nowrap; }
+
+    #center-hud {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: rgba(13, 17, 23, 0.92);
+      border: 1px solid #58a6ff;
+      border-radius: 8px;
+      padding: 4px 14px;
+      min-width: 110px;
+      box-shadow: 0 0 15px rgba(88, 166, 255, 0.2);
+    }
+
+    #turn-timer { font-size: 18px; font-weight: 900; color: #f0883e; }
+    #turn-indicator { font-size: 10px; font-weight: bold; color: #58a6ff; }
+    #wind-badge {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    /* SELETOR DE MUNIÇÃO (T1 / T2 / SS) */
+    #shot-selector-wrapper {
+      position: absolute;
+      top: 74px;
+      left: 10px;
+      display: flex;
+      gap: 6px;
+      z-index: 25;
+    }
+
+    .shot-btn {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 48px;
+      transition: all 0.15s ease;
+    }
+
+    .shot-btn.active {
+      background: #1f6feb;
+      border-color: #58a6ff;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(88, 166, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .shot-btn#btn-shot-ss.active {
+      background: linear-gradient(135deg, #8957e5, #d2a8ff);
+      border-color: #f0883e;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(210, 168, 255, 0.6);
+      animation: pulseSS 1.2s infinite alternate;
+    }
+
+    .shot-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    @keyframes pulseSS {
+      from { filter: drop-shadow(0 0 4px #8957e5); }
+      to { filter: drop-shadow(0 0 12px #d2a8ff); }
+    }
+
+    /* BARRA DE DISPARO OSCILANTE ESTILO GUNBOUND */
+    #charge-bar-wrapper {
+      position: absolute;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: clamp(220px, 45vw, 360px);
+      background: rgba(13, 17, 23, 0.9);
+      border: 2px solid #58a6ff;
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: 0 0 20px rgba(88, 166, 255, 0.4);
+      z-index: 30;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #charge-bar-wrapper.active {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    .charge-track {
+      position: relative;
+      width: 100%;
+      height: 16px;
+      background: #161b22;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .charge-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #238636, #f0883e, #f85149);
+      border-radius: 6px;
+    }
+
+    .charge-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
+
+    /* CONTROLES MOBILE & TÁTEIS */
+    #touch-controls {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .touch-interactive {
+      pointer-events: auto;
+      background: rgba(22, 27, 34, 0.85);
+      border: 1px solid #444c56;
+      border-radius: 8px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dpad-left {
+      position: absolute;
+      bottom: 74px;
+      left: 10px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .dpad-btn {
+      width: 44px;
+      height: 44px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px;
+    }
+    .dpad-btn:active { background: #388bfd; }
+
+    .action-right {
+      position: absolute;
+      bottom: 74px;
+      right: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .angle-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: rgba(13, 17, 23, 0.9);
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+    }
+
+    .angle-btn {
+      width: 38px;
+      height: 24px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .angle-btn:active { background: #58a6ff; }
+
+    .fire-gunbound-btn {
+      width: 68px;
+      height: 58px;
+      background: linear-gradient(145deg, #da3633, #f85149);
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(218, 54, 51, 0.6);
+    }
+    .fire-gunbound-btn:active {
+      transform: scale(0.93);
+      background: #b62324;
+    }
+
+    /* DECK DE AÇÕES (SCROLL HORIZONTAL) */
+    #card-hand-wrapper {
+      position: absolute;
+      bottom: 6px;
+      left: 6px;
+      right: 6px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      z-index: 25;
+      pointer-events: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #card-hand-wrapper::-webkit-scrollbar { display: none; }
+
+    .action-card {
+      background: linear-gradient(145deg, #1c2128, #2d333b);
+      border: 1px solid #58a6ff;
+      color: #e6edf3;
+      padding: 4px 6px;
+      border-radius: 6px;
+      font-size: 9px;
+      min-width: 92px;
+      max-width: 96px;
+      height: 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .action-card:active { transform: scale(0.95); border-color: #79c0ff; }
+    .action-card:disabled { opacity: 0.35; transform: none; }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+
+  <!-- TELA 1: MENU PRINCIPAL -->
+  <div id="menu-screen" class="screen-view">
+    <div class="title-banner">AETHER-KARTS</div>
+    <div class="subtitle">Mecânica Balística GunBound com Sistema T1 / T2 / SS</div>
+    <div id="player-profile-badge" class="profile-badge">Nível 1 • 0 Vitórias • 0 Cristais</div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-main" onclick="GameApp.goToCustomization()">HANGAR DE KART</button>
+      <button class="btn-secondary" onclick="GameApp.resetProgress()">RESETAR</button>
+    </div>
+  </div>
+
+  <!-- TELA 2: HANGAR -->
+  <div id="equip-screen" class="screen-view hidden">
+    <div style="font-size: 18px; font-weight: bold; color: #58a6ff; margin-bottom: 4px;">HANGAR & SINERGIAS</div>
+    
+    <div class="equip-layout">
+      <div class="panel-box">
+        <h3>EQUIPAMENTOS</h3>
+        <div class="slot-row"><span>Capacete:</span><select id="sel-helmet" onchange="GameApp.updatePlayerEquips()"></select></div>
+        <div class="slot-row"><span>Armadura:</span><select id="sel-armor" onchange="GameApp.updatePlayerEquips()"></select></div>
+        <div class="slot-row"><span>Lançador:</span><select id="sel-weapon" onchange="GameApp.updatePlayerEquips()"></select></div>
+        <div class="slot-row"><span>Base/Rodas:</span><select id="sel-wheels" onchange="GameApp.updatePlayerEquips()"></select></div>
+        <div class="slot-row"><span>Amuleto:</span><select id="sel-trinket" onchange="GameApp.updatePlayerEquips()"></select></div>
+      </div>
+
+      <div class="panel-box" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <canvas id="previewCanvas" width="180" height="130" style="background:#0d1117; border-radius:6px; border:1px solid #30363d;"></canvas>
+      </div>
+
+      <div class="panel-box">
+        <h3>STATUS & SINERGIAS</h3>
+        <div id="stat-atk">Ataque: 100%</div>
+        <div id="stat-def">Defesa: 100%</div>
+        <div id="stat-acc">Precisão: 100%</div>
+        <div id="stat-mob">Mobilidade: 100%</div>
+        <div id="synergy-list" style="margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px;">
+      <button class="btn-secondary" onclick="GameApp.goToMenu()">VOLTAR</button>
+      <button class="btn-main" onclick="GameApp.startMatch()">ENTRAR NA ARENA</button>
+    </div>
+  </div>
+
+  <!-- TELA 3: VITÓRIA / DERROTA -->
+  <div id="gameover-screen" class="screen-view hidden">
+    <div id="gameover-title" class="title-banner">VITÓRIA!</div>
+    <div id="gameover-desc" class="subtitle">O kart adversário foi aniquilado.</div>
+    <div id="reward-info" style="color:#f0883e; font-size:12px; font-weight:bold; margin-bottom:14px;">+100 XP • +50 Cristais</div>
+    <button class="btn-main" onclick="GameApp.goToCustomization()">VOLTAR AO HANGAR</button>
+  </div>
+
+  <!-- HUD IN-GAME -->
+  <div id="hud">
+    <div class="hud-card">
+      <div style="font-size:11px;"><strong>Zephyr (Você)</strong></div>
+      <div class="bar-container"><div id="p1-hp" class="bar-hp"></div></div>
+      <div class="bar-container"><div id="p1-mana" class="bar-mana"></div></div>
+      <div class="bar-container"><div id="p1-fuel" class="bar-fuel"></div></div>
+      <div class="bar-container" title="Carga SS"><div id="p1-ss" class="bar-ss"></div></div>
+      <div id="p1-stats" class="hud-subtext">Mana: 3/10 | SS: 0%</div>
+    </div>
+
+    <div id="center-hud">
+      <div id="turn-timer">40s</div>
+      <div id="turn-indicator">SEU TURNO</div>
+      <div id="wind-badge">
+        <span id="wind-arrow">➔</span>
+        <span id="wind-val">0.00</span>
+      </div>
+    </div>
+
+    <div class="hud-card" style="text-align:right;">
+      <div style="font-size:11px;"><strong>Ignis (Bot)</strong></div>
+      <div class="bar-container"><div id="bot-hp" class="bar-hp"></div></div>
+      <div class="bar-container"><div id="bot-mana" class="bar-mana"></div></div>
+      <div class="bar-container" title="Carga SS Bot"><div id="bot-ss" class="bar-ss"></div></div>
+      <div id="bot-stats" class="hud-subtext">Mana: 3/10 | SS: 0%</div>
+    </div>
+  </div>
+
+  <!-- SELETOR DE MUNIÇÃO (T1 / T2 / SS) -->
+  <div id="shot-selector-wrapper">
+    <button class="shot-btn active" id="btn-shot-1" onclick="GameApp.selectShotType('T1')">
+      <span>T1</span>
+      <span style="font-size:8px; opacity:0.8;">Padrão</span>
+    </button>
+    <button class="shot-btn" id="btn-shot-2" onclick="GameApp.selectShotType('T2')">
+      <span>T2</span>
+      <span style="font-size:8px; opacity:0.8;">Especial</span>
+    </button>
+    <button class="shot-btn" id="btn-shot-ss" disabled onclick="GameApp.selectShotType('SS')">
+      <span>SS</span>
+      <span style="font-size:8px; opacity:0.8;">SUPER</span>
+    </button>
+  </div>
+
+  <!-- BARRA DE FORÇA OSCILANTE (GUNBOUND) -->
+  <div id="charge-bar-wrapper">
+    <div class="charge-track">
+      <div id="charge-fill" class="charge-fill"></div>
+      <div id="charge-txt" class="charge-text">0%</div>
+    </div>
+  </div>
+
+  <!-- CONTROLES TÁTEIS MOBILE -->
+  <div id="touch-controls">
+    <div class="dpad-left">
+      <button class="touch-interactive dpad-btn" id="btn-touch-left">◀</button>
+      <button class="touch-interactive dpad-btn" id="btn-touch-right">▶</button>
+    </div>
+
+    <div class="action-right">
+      <div class="angle-box">
+        <button class="touch-interactive angle-btn" id="btn-ang-up">▲</button>
+        <span id="txt-mobile-angle" style="font-size:10px; font-weight:bold; color:#58a6ff;">40°</span>
+        <button class="touch-interactive angle-btn" id="btn-ang-down">▼</button>
+      </div>
+
+      <button class="touch-interactive fire-gunbound-btn" id="btn-touch-fire">
+        <span>SEGURE</span>
+        <span style="font-size:9px; opacity:0.8;">DISPARO</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- CARTAS DE AÇÃO -->
+  <div id="card-hand-wrapper"></div>
+
+  <!-- CANVAS PRINCIPAL -->
+  <canvas id="gameCanvas" width="1024" height="600"></canvas>
+</div>
+
+<script>
+/**
+ * AETHER-KARTS: ENGINE COM MUNIÇÕES T1, T2 E SS
+ */
+
+const CONFIG = {
+  CANVAS_WIDTH: 1024,
+  CANVAS_HEIGHT: 600,
+  GRAVITY: 0.22,
+  WIND_COEFF: 0.016,
+  MAX_POWER: 26,
+  CHARGE_SPEED: 1.4,
+  TURN_TIME: 40,
+  MAX_MANA: 10,
+  MANA_PER_TURN: 2
+};
+
+// MOTOR DE ÁUDIO PROCEDURAL
+class SoundEngine {
+  constructor() { this.ctx = null; }
+  init() {
+    if (!this.ctx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) this.ctx = new AudioContextClass();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+  playShoot(type = 'T1') {
+    this.init();
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    
+    if (type === 'SS') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.45);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(); osc.stop(this.ctx.currentTime + 0.45);
+    } else if (type === 'T2') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(480, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(90, this.ctx.currentTime + 0.28);
+      gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.28);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(); osc.stop(this.ctx.currentTime + 0.28);
+    } else {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(380, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+    }
+  }
+  playExplosion(isSS = false) {
+    this.init();
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(isSS ? 220 : 140, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + (isSS ? 0.6 : 0.35));
+    gain.gain.setValueAtTime(isSS ? 0.6 : 0.45, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + (isSS ? 0.6 : 0.35));
+    osc.connect(gain); gain.connect(this.ctx.destination);
+    osc.start(); osc.stop(this.ctx.currentTime + (isSS ? 0.6 : 0.35));
+  }
+  playCard() {
+    this.init();
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(500, this.ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(850, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+    osc.connect(gain); gain.connect(this.ctx.destination);
+    osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+  }
+}
+const AudioFX = new SoundEngine();
+
+// SISTEMA DE PARTÍCULAS
+class ParticleSystem {
+  constructor() {
+    this.particles = [];
+  }
+  spawnSmoke(x, y, color = 'rgba(200, 210, 225, 0.4)') {
+    this.particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: -Math.random() * 1.2 - 0.5,
+      size: Math.random() * 4 + 3,
+      alpha: 0.6,
+      color,
+      decay: 0.02
+    });
+  }
+  spawnExplosion(x, y, radius = 25, color = '#f0883e') {
+    const count = radius > 35 ? 40 : 24;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * (radius > 35 ? 7 : 5) + 1.5;
+      this.particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: Math.random() * 6 + 2,
+        alpha: 1.0,
+        color,
+        decay: Math.random() * 0.03 + 0.015
+      });
+    }
+  }
+  updateAndDraw(ctx) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.alpha -= p.decay;
+      if (p.alpha <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// STORAGE LOCAL
+const StorageManager = {
+  KEY: 'AETHER_KARTS_GUNBOUND_V2',
+  load() {
+    try {
+      const d = localStorage.getItem(this.KEY);
+      return d ? JSON.parse(d) : this.defaultState();
+    } catch(e) { return this.defaultState(); }
+  },
+  save(d) {
+    try { localStorage.setItem(this.KEY, JSON.stringify(d)); } catch(e) {}
+  },
+  defaultState() {
+    return {
+      profile: { level: 1, xp: 0, crystals: 100, wins: 0, matches: 0 },
+      selectedLoadout: { helmet: 'helm_scout', armor: 'armor_light', weapon: 'weap_cannon', wheels: 'wheel_speed', trinket: 'trink_compass' }
+    };
+  },
+  recordMatch(isWin) {
+    const s = this.load();
+    s.profile.matches++;
+    if (isWin) { s.profile.wins++; s.profile.xp += 100; s.profile.crystals += 50; }
+    else { s.profile.xp += 30; s.profile.crystals += 15; }
+    s.profile.level = Math.floor(s.profile.xp / 200) + 1;
+    this.save(s);
+    return s;
+  }
+};
+
+// BANCO DE DADOS DE EQUIPAMENTOS
+const EQUIP_DATABASE = {
+  helmet: [
+    { id: 'helm_scout', name: 'Visor do Rastreador', atk: 0, def: 0, acc: 0.20, mob: 0.05 },
+    { id: 'helm_iron', name: 'Elmo de Ferro', atk: 0, def: 0.15, acc: -0.05, mob: -0.05 },
+    { id: 'helm_mage', name: 'Diadema Arcano', atk: 0.10, def: -0.05, acc: 0.10, mob: 0 }
+  ],
+  armor: [
+    { id: 'armor_light', name: 'Túnica de Seda', atk: 0, def: 0.05, acc: 0, mob: 0.20 },
+    { id: 'armor_plate', name: 'Placa de Aço', atk: -0.05, def: 0.25, acc: 0, mob: -0.20 },
+    { id: 'armor_crystal', name: 'Couraça Quartzo', atk: 0.10, def: 0.10, acc: -0.05, mob: 0 }
+  ],
+  weapon: [
+    { id: 'weap_cannon', name: 'Canhão de Éter', atk: 0.20, def: 0, acc: -0.05, mob: 0 },
+    { id: 'weap_rail', name: 'Lançador Rail', atk: 0.05, def: 0, acc: 0.25, mob: -0.05 },
+    { id: 'weap_mortar', name: 'Catapulta Pesada', atk: 0.15, def: 0.05, acc: -0.10, mob: -0.10 }
+  ],
+  wheels: [
+    { id: 'wheel_speed', name: 'Giro-Rodas Rápidas', atk: 0, def: -0.05, acc: 0, mob: 0.30 },
+    { id: 'wheel_treads', name: 'Lagartas Blindadas', atk: 0, def: 0.15, acc: 0.05, mob: -0.15 },
+    { id: 'wheel_hover', name: 'Flutuadores Arcanos', atk: 0.05, def: 0, acc: 0.10, mob: 0.10 }
+  ],
+  trinket: [
+    { id: 'trink_compass', name: 'Bússola Celeste', atk: 0, def: 0, acc: 0.15, mob: 0.10 },
+    { id: 'trink_battery', name: 'Cristal de Mana', atk: 0.10, def: 0, acc: 0, mob: 0 },
+    { id: 'trink_shield', name: 'Gema Protetora', atk: 0, def: 0.15, acc: 0, mob: -0.05 }
+  ]
+};
+
+const ACTION_CARDS = [
+  { id: 'c1', name: 'Disparo Duplo', cost: 3, desc: '2 Tiros consecutivos.', effect: g => g.turnMods.doubleShot = true },
+  { id: 'c2', name: 'Barreira Arcana', cost: 2, desc: 'Parede de cristal defensiva.', effect: (g, u) => g.terrain.createBarrier(u.x + (u.id==='p1'?70:-70), u.y) },
+  { id: 'c3', name: 'Inverter Vento', cost: 2, desc: 'Inverte direção do vento.', effect: g => g.wind = -g.wind },
+  { id: 'c4', name: 'Calmaria', cost: 1, desc: 'Reduz o vento a 0.', effect: g => g.wind = 0 },
+  { id: 'c5', name: 'Salto Astral', cost: 4, desc: 'Teleporta 100px adiante.', effect: (g, u) => { u.x += (u.id==='p1'?100:-100); u.y = g.terrain.getGroundHeight(u.x); } },
+  { id: 'c6', name: 'Núcleo Pesado', cost: 2, desc: 'Super cratera e impacto.', effect: g => g.turnMods.bigExplosion = true }
+];
+
+// TERRENO DESTRUTÍVEL
+class TerrainEngine {
+  constructor(w, h) {
+    this.width = w; this.height = h;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = w; this.canvas.height = h;
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    this.generate();
+  }
+  generate() {
+    this.ctx.fillStyle = '#14202d';
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, this.height);
+    for (let x = 0; x <= this.width; x += 8) {
+      let y = 430 + Math.sin(x * 0.007) * 55 + Math.sin(x * 0.02) * 18;
+      this.ctx.lineTo(x, y);
+    }
+    this.ctx.lineTo(this.width, this.height);
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    this.ctx.strokeStyle = '#58a6ff';
+    this.ctx.lineWidth = 4;
+    this.ctx.stroke();
+  }
+  createCrater(x, y, r) {
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = 'destination-out';
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, r, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.restore();
+  }
+  createBarrier(x, y, w = 18, h = 65) {
+    this.ctx.save();
+    this.ctx.fillStyle = '#a371f7';
+    this.ctx.fillRect(x - w/2, y - h, w, h);
+    this.ctx.restore();
+  }
+  isSolid(x, y) {
+    if (x < 0 || x >= this.width || y >= this.height) return false;
+    if (y < 0) return false;
+    return this.ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[3] > 0;
+  }
+  getGroundHeight(x) {
+    for (let y = 0; y < this.height; y += 2) {
+      if (this.isSolid(x, y)) return y;
+    }
+    return this.height;
+  }
+}
+
+// ENTIDADE DO VEÍCULO & PILOTO COM MEDIDOR SS
+class KartHero {
+  constructor(x, id, name, isBot = false) {
+    this.id = id;
+    this.name = name;
+    this.isBot = isBot;
+    this.x = x;
+    this.y = 200;
+    this.hp = 100;
+    this.mana = 3;
+    this.fuel = 100;
+    this.ssCharge = 0; // Carga de 0 a 100%
+    this.angle = isBot ? 140 : 40;
+    
+    this.recoilOffset = 0;
+    this.suspensionSquash = 0;
+    this.wheelRotation = 0;
+    
+    this.equips = {
+      helmet: EQUIP_DATABASE.helmet[0],
+      armor: EQUIP_DATABASE.armor[0],
+      weapon: EQUIP_DATABASE.weapon[0],
+      wheels: EQUIP_DATABASE.wheels[0],
+      trinket: EQUIP_DATABASE.trinket[0]
+    };
+    this.stats = { atk: 1, def: 1, acc: 1, mob: 1 };
+    this.activeSynergies = [];
+    this.recalculateStats();
+  }
+
+  addSSCharge(amount) {
+    this.ssCharge = Math.min(100, this.ssCharge + amount);
+  }
+
+  recalculateStats() {
+    let atk = 1, def = 1, acc = 1, mob = 1;
+    this.activeSynergies = [];
+    Object.values(this.equips).forEach(eq => {
+      if (!eq) return;
+      atk += eq.atk; def += eq.def; acc += eq.acc; mob += eq.mob;
+    });
+    if (this.equips.helmet?.id === 'helm_scout' && this.equips.weapon?.id === 'weap_rail') {
+      acc += 0.20; this.activeSynergies.push('Foco Cirúrgico (+20% Mira)');
+    }
+    if (this.equips.armor?.id === 'armor_plate' && this.equips.wheels?.id === 'wheel_treads') {
+      def += 0.25; mob -= 0.10; this.activeSynergies.push('Fortaleza Telúrica (+25% Def)');
+    }
+    this.stats = { atk, def, acc, mob };
+  }
+
+  triggerRecoil() {
+    this.recoilOffset = this.id === 'p1' ? -6 : 6;
+    this.suspensionSquash = 5;
+  }
+
+  updatePhysics(t, particles) {
+    this.recoilOffset *= 0.82;
+    this.suspensionSquash *= 0.78;
+
+    if (!t.isSolid(this.x, this.y + 14)) {
+      this.y += 3.5;
+      if (this.y > 650) this.hp = 0;
+    } else {
+      while (t.isSolid(this.x, this.y + 12) && this.y > 0) this.y -= 1;
+    }
+
+    if (Math.random() < 0.2 && particles) {
+      const offsetX = this.id === 'p1' ? -18 : 18;
+      particles.spawnSmoke(this.x + offsetX, this.y + 2);
+    }
+  }
+
+  move(dir, t) {
+    if (this.fuel <= 0) return;
+    const nx = this.x + dir * (2.0 * this.stats.mob);
+    if (nx > 30 && nx < CONFIG.CANVAS_WIDTH - 30) {
+      this.x = nx;
+      this.fuel = Math.max(0, this.fuel - 0.8);
+      this.wheelRotation += dir * 0.2;
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x + this.recoilOffset, this.y + this.suspensionSquash);
+
+    // 1. CANHÃO ROTATIVO
+    ctx.save();
+    ctx.translate(0, -8);
+    const rad = (this.angle * Math.PI) / 180;
+    ctx.rotate(-rad);
+    
+    ctx.fillStyle = this.id === 'p1' ? '#388bfd' : '#f85149';
+    ctx.fillRect(0, -4, 26, 8);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(0, -4, 26, 8);
+    
+    ctx.fillStyle = '#1f242c';
+    ctx.fillRect(24, -5, 4, 10);
+    ctx.restore();
+
+    // 2. CHASSI DO KART
+    ctx.fillStyle = this.id === 'p1' ? '#1f6feb' : '#da3633';
+    ctx.beginPath();
+    ctx.roundRect(-20, -6, 40, 15, [4, 4, 2, 2]);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 3. PILOTO
+    ctx.fillStyle = '#f0f6fc';
+    ctx.beginPath();
+    ctx.arc(this.id === 'p1' ? -4 : 4, -12, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (this.equips.helmet?.id === 'helm_scout') {
+      ctx.fillStyle = '#2ea043';
+      ctx.fillRect(this.id === 'p1' ? -9 : -1, -19, 10, 5);
+    } else {
+      ctx.fillStyle = '#a371f7';
+      ctx.beginPath();
+      ctx.arc(this.id === 'p1' ? -4 : 4, -15, 6, Math.PI, 0);
+      ctx.fill();
+    }
+
+    // 4. RODAS
+    ctx.fillStyle = '#2d333b';
+    [-12, 12].forEach(wx => {
+      ctx.save();
+      ctx.translate(wx, 10);
+      ctx.rotate(this.wheelRotation);
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#8b949e';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-5, 0); ctx.lineTo(5, 0);
+      ctx.moveTo(0, -5); ctx.lineTo(0, 5);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+}
+
+// FÍSICA BALÍSTICA E VARIANTES DE TIRO (T1, T2, SS)
+class Projectile {
+  constructor(x, y, angle, powerPercent, wind, owner, shotType = 'T1', mods = {}) {
+    this.x = x;
+    this.y = y;
+    this.shotType = shotType;
+    const rad = (angle * Math.PI) / 180;
+    const speed = (powerPercent / 100) * CONFIG.MAX_POWER;
+    this.vx = Math.cos(rad) * speed;
+    this.vy = -Math.sin(rad) * speed;
+    this.wind = wind;
+    this.owner = owner;
+    this.mods = mods;
+    this.active = true;
+    this.trail = [];
+
+    // Ajuste de Dano e Efeito por Tipo de Tiro
+    if (shotType === 'SS') {
+      this.damage = 50 * owner.stats.atk;
+      this.craterRadius = 45;
+      this.color = '#d2a8ff';
+      this.size = 7;
+    } else if (shotType === 'T2') {
+      this.damage = 34 * owner.stats.atk;
+      this.craterRadius = mods.bigExplosion ? 40 : 28;
+      this.color = '#f0883e';
+      this.size = 5.5;
+    } else {
+      // T1 Padrão
+      this.damage = 25 * owner.stats.atk;
+      this.craterRadius = mods.bigExplosion ? 34 : 22;
+      this.color = owner.id === 'p1' ? '#58a6ff' : '#f85149';
+      this.size = 4.5;
+    }
+  }
+
+  update(particles) {
+    this.vx += this.wind * CONFIG.WIND_COEFF;
+    this.vy += CONFIG.GRAVITY;
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    this.trail.push({ x: this.x, y: this.y, alpha: 0.8 });
+    if (this.trail.length > (this.shotType === 'SS' ? 18 : 12)) this.trail.shift();
+
+    if (Math.random() < 0.4 && particles) {
+      particles.spawnSmoke(this.x, this.y, this.shotType === 'SS' ? 'rgba(210, 168, 255, 0.6)' : 'rgba(88, 166, 255, 0.5)');
+    }
+
+    if (this.x < -100 || this.x > CONFIG.CANVAS_WIDTH + 100 || this.y > CONFIG.CANVAS_HEIGHT + 60) {
+      this.active = false;
+    }
+  }
+
+  draw(ctx) {
+    for (let i = 0; i < this.trail.length; i++) {
+      const pt = this.trail[i];
+      ctx.fillStyle = this.shotType === 'SS' ? `rgba(210, 168, 255, ${i / 20})` : (this.owner.id === 'p1' ? `rgba(88, 166, 255, ${i / 15})` : `rgba(248, 81, 73, ${i / 15})`);
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, (i / this.trail.length) * (this.size * 0.8), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+// CONTROLADOR DA PARTIDA
+class GameManager {
+  constructor() {
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.terrain = new TerrainEngine(CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+    this.particles = new ParticleSystem();
+    
+    this.p1 = new KartHero(160, 'p1', 'Zephyr', false);
+    this.bot = new KartHero(840, 'bot', 'Ignis', true);
+    
+    this.wind = Number((Math.random() * 5 - 2.5).toFixed(2));
+    this.currentTurn = 'p1';
+    this.selectedShot = 'T1'; // T1, T2, SS
+    this.turnTimer = CONFIG.TURN_TIME;
+    this.projectiles = [];
+    this.turnMods = {};
+    this.isFiring = false;
+    this.isGameOver = false;
+    this.touchMoveDir = 0;
+
+    this.isCharging = false;
+    this.chargePower = 0;
+    this.chargeDirection = 1;
+
+    this.initInputs();
+  }
+
+  start() {
+    this.nextTurn(true);
+    this.loop();
+  }
+
+  nextTurn(isFirst = false) {
+    if (this.isGameOver) return;
+    if (!isFirst) this.currentTurn = this.currentTurn === 'p1' ? 'bot' : 'p1';
+    this.turnMods = {};
+    this.wind = Number((Math.random() * 5 - 2.5).toFixed(2));
+    const active = this.currentTurn === 'p1' ? this.p1 : this.bot;
+    active.mana = Math.min(CONFIG.MAX_MANA, active.mana + CONFIG.MANA_PER_TURN);
+    active.fuel = 100;
+    
+    // Se o SS foi gasto, reseta para T1
+    if (this.selectedShot === 'SS') this.selectedShot = 'T1';
+    GameApp.selectShotType(this.selectedShot);
+
+    document.getElementById('turn-indicator').innerText = this.currentTurn === 'p1' ? 'SEU TURNO' : 'TURNO DO BOT';
+    document.getElementById('turn-indicator').style.color = this.currentTurn === 'p1' ? '#58a6ff' : '#f85149';
+    this.updateHUD();
+    this.renderCards();
+    this.startTimer();
+
+    if (this.currentTurn === 'bot') {
+      setTimeout(() => this.botTurn(), 1000);
+    }
+  }
+
+  startTimer() {
+    clearInterval(this.interval);
+    this.turnTimer = CONFIG.TURN_TIME;
+    document.getElementById('turn-timer').innerText = `${this.turnTimer}s`;
+    this.interval = setInterval(() => {
+      if (this.isFiring || this.isGameOver) return;
+      this.turnTimer--;
+      document.getElementById('turn-timer').innerText = `${this.turnTimer}s`;
+      if (this.turnTimer <= 0) {
+        clearInterval(this.interval);
+        this.nextTurn();
+      }
+    }, 1000);
+  }
+
+  startCharging() {
+    if (this.currentTurn !== 'p1' || this.isFiring || this.isGameOver) return;
+    AudioFX.init();
+    this.isCharging = true;
+    this.chargePower = 0;
+    this.chargeDirection = 1;
+    document.getElementById('charge-bar-wrapper').classList.add('active');
+  }
+
+  releaseAndFire() {
+    if (!this.isCharging) return;
+    this.isCharging = false;
+    document.getElementById('charge-bar-wrapper').classList.remove('active');
+    this.fire(this.p1, this.chargePower, this.selectedShot);
+  }
+
+  fire(unit, powerPercent, shotType = 'T1') {
+    if (this.isGameOver || this.isFiring) return;
+    this.isFiring = true;
+    clearInterval(this.interval);
+    AudioFX.playShoot(shotType);
+    unit.triggerRecoil();
+
+    // Se disparou SS, consome toda a carga
+    if (shotType === 'SS') {
+      unit.ssCharge = 0;
+    }
+
+    const rad = (unit.angle * Math.PI) / 180;
+    const sx = unit.x + Math.cos(rad) * 26;
+    const sy = unit.y - 8 - Math.sin(rad) * 26;
+
+    this.projectiles.push(new Projectile(sx, sy, unit.angle, powerPercent, this.wind, unit, shotType, { ...this.turnMods }));
+
+    // Tiro 2 do Canhão ou Carta Disparo Duplo
+    const isDouble = this.turnMods.doubleShot || (shotType === 'T2' && unit.equips.weapon?.id === 'weap_cannon');
+    if (isDouble) {
+      setTimeout(() => {
+        AudioFX.playShoot('T1');
+        unit.triggerRecoil();
+        this.projectiles.push(new Projectile(sx, sy, unit.angle + 4, powerPercent * 0.96, this.wind, unit, 'T1', { ...this.turnMods }));
+      }, 320);
+    }
+  }
+
+  botTurn() {
+    if (this.bot.hp <= 0 || this.isGameOver) return;
+    
+    // IA decide munição: SS se pronto, senão T2 com probabilidade
+    let botShot = 'T1';
+    if (this.bot.ssCharge >= 100) {
+      botShot = 'SS';
+    } else if (Math.random() > 0.45) {
+      botShot = 'T2';
+    }
+
+    if (this.bot.mana >= 3 && Math.random() > 0.4) {
+      ACTION_CARDS[0].effect(this, this.bot);
+      this.bot.mana -= ACTION_CARDS[0].cost;
+      AudioFX.playCard();
+    }
+
+    let bestAng = 140, bestPwr = 55, minD = Infinity;
+    for (let a = 110; a <= 170; a += 4) {
+      for (let p = 30; p <= 100; p += 4) {
+        let sx = this.bot.x, sy = this.bot.y - 8;
+        const rad = (a * Math.PI) / 180;
+        const spd = (p / 100) * CONFIG.MAX_POWER;
+        let vx = Math.cos(rad) * spd, vy = -Math.sin(rad) * spd;
+
+        for (let t = 0; t < 80; t++) {
+          vx += this.wind * CONFIG.WIND_COEFF;
+          vy += CONFIG.GRAVITY;
+          sx += vx; sy += vy;
+          if (this.terrain.isSolid(sx, sy) || sy >= 600) {
+            const d = Math.hypot(sx - this.p1.x, sy - this.p1.y);
+            if (d < minD) { minD = d; bestAng = a; bestPwr = p; }
+            break;
+          }
+        }
+      }
+    }
+
+    this.bot.angle = bestAng + (Math.random() * 2 - 1);
+    const calculatedPower = bestPwr + (Math.random() * 2 - 1);
+
+    setTimeout(() => this.fire(this.bot, calculatedPower, botShot), 1000);
+  }
+
+  initInputs() {
+    window.addEventListener('keydown', (e) => {
+      if (this.currentTurn !== 'p1' || this.isGameOver) return;
+
+      if (e.key === 'ArrowUp') { this.p1.angle = Math.min(90, this.p1.angle + 2); this.updateHUD(); }
+      if (e.key === 'ArrowDown') { this.p1.angle = Math.max(0, this.p1.angle - 2); this.updateHUD(); }
+      if (e.key === 'a' || e.key === 'A') { this.p1.move(-1, this.terrain); this.updateHUD(); }
+      if (e.key === 'd' || e.key === 'D') { this.p1.move(1, this.terrain); this.updateHUD(); }
+
+      // Alternância de Munição via Teclado
+      if (e.key === '1') GameApp.selectShotType('T1');
+      if (e.key === '2') GameApp.selectShotType('T2');
+      if ((e.key === '3' || e.key === 's' || e.key === 'S') && this.p1.ssCharge >= 100) GameApp.selectShotType('SS');
+
+      if (e.code === 'Space' && !e.repeat && !this.isCharging && !this.isFiring) {
+        e.preventDefault();
+        this.startCharging();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space' && this.isCharging) {
+        e.preventDefault();
+        this.releaseAndFire();
+      }
+    });
+
+    const fireBtn = document.getElementById('btn-touch-fire');
+    fireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.startCharging(); }, { passive: false });
+    fireBtn.addEventListener('touchend', (e) => { e.preventDefault(); this.releaseAndFire(); }, { passive: false });
+    fireBtn.addEventListener('mousedown', () => this.startCharging());
+    fireBtn.addEventListener('mouseup', () => this.releaseAndFire());
+
+    document.getElementById('btn-ang-up').addEventListener('click', () => {
+      if (this.currentTurn === 'p1') { this.p1.angle = Math.min(90, this.p1.angle + 2); this.updateHUD(); }
+    });
+    document.getElementById('btn-ang-down').addEventListener('click', () => {
+      if (this.currentTurn === 'p1') { this.p1.angle = Math.max(0, this.p1.angle - 2); this.updateHUD(); }
+    });
+
+    const bindDpad = (id, dir) => {
+      const el = document.getElementById(id);
+      const start = (e) => { e.preventDefault(); this.touchMoveDir = dir; };
+      const stop = (e) => { e.preventDefault(); this.touchMoveDir = 0; };
+      el.addEventListener('touchstart', start, { passive: false });
+      el.addEventListener('touchend', stop, { passive: false });
+      el.addEventListener('mousedown', start);
+      el.addEventListener('mouseup', stop);
+    };
+    bindDpad('btn-touch-left', -1);
+    bindDpad('btn-touch-right', 1);
+  }
+
+  updateHUD() {
+    document.getElementById('p1-hp').style.width = `${Math.max(0, this.p1.hp)}%`;
+    document.getElementById('bot-hp').style.width = `${Math.max(0, this.bot.hp)}%`;
+    document.getElementById('p1-mana').style.width = `${(this.p1.mana / CONFIG.MAX_MANA) * 100}%`;
+    document.getElementById('bot-mana').style.width = `${(this.bot.mana / CONFIG.MAX_MANA) * 100}%`;
+    document.getElementById('p1-fuel').style.width = `${this.p1.fuel}%`;
+    
+    // Atualiza Barra e Botão SS
+    document.getElementById('p1-ss').style.width = `${this.p1.ssCharge}%`;
+    document.getElementById('bot-ss').style.width = `${this.bot.ssCharge}%`;
+    const ssBtn = document.getElementById('btn-shot-ss');
+    if (this.p1.ssCharge >= 100) {
+      ssBtn.removeAttribute('disabled');
+    } else {
+      ssBtn.setAttribute('disabled', 'true');
+    }
+
+    document.getElementById('wind-arrow').innerText = this.wind >= 0 ? '➔' : '⬅';
+    document.getElementById('wind-val').innerText = Math.abs(this.wind).toFixed(2);
+    document.getElementById('wind-badge').style.color = this.wind >= 0 ? '#58a6ff' : '#f85149';
+
+    document.getElementById('p1-stats').innerText = `Mana: ${this.p1.mana}/10 | SS: ${Math.round(this.p1.ssCharge)}%`;
+    document.getElementById('bot-stats').innerText = `Mana: ${this.bot.mana}/10 | SS: ${Math.round(this.bot.ssCharge)}%`;
+    document.getElementById('txt-mobile-angle').innerText = `${Math.round(this.p1.angle)}°`;
+  }
+
+  renderCards() {
+    const wrap = document.getElementById('card-hand-wrapper');
+    wrap.innerHTML = '';
+    if (this.currentTurn !== 'p1' || this.isGameOver) return;
+    ACTION_CARDS.forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'action-card';
+      b.disabled = this.p1.mana < c.cost || this.isFiring;
+      b.innerHTML = `<div><strong>${c.name}</strong></div><div style="font-size:8px;color:#8b949e">${c.desc}</div><div style="color:#58a6ff">⚡${c.cost} Mana</div>`;
+      b.onclick = () => {
+        if (this.p1.mana >= c.cost) {
+          this.p1.mana -= c.cost;
+          AudioFX.playCard();
+          c.effect(this, this.p1);
+          this.renderCards();
+          this.updateHUD();
+        }
+      };
+      wrap.appendChild(b);
+    });
+  }
+
+  checkEnd() {
+    if ((this.p1.hp <= 0 || this.bot.hp <= 0) && !this.isGameOver) {
+      this.isGameOver = true;
+      clearInterval(this.interval);
+      const isWin = this.bot.hp <= 0;
+      const s = StorageManager.recordMatch(isWin);
+      document.getElementById('gameover-title').innerText = isWin ? 'VITÓRIA!' : 'DERROTA!';
+      document.getElementById('gameover-title').style.color = isWin ? '#2ea043' : '#f85149';
+      document.getElementById('player-profile-badge').innerText = `Nível ${s.profile.level} • ${s.profile.wins} Vitórias • ${s.profile.crystals} Cristais`;
+      document.getElementById('gameover-screen').classList.remove('hidden');
+    }
+  }
+
+  loop() {
+    this.ctx.clearRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+
+    if (this.touchMoveDir !== 0 && this.currentTurn === 'p1' && !this.isFiring) {
+      this.p1.move(this.touchMoveDir, this.terrain);
+      this.updateHUD();
+    }
+
+    if (this.isCharging) {
+      this.chargePower += CONFIG.CHARGE_SPEED * this.chargeDirection;
+      if (this.chargePower >= 100) {
+        this.chargePower = 100;
+        this.chargeDirection = -1;
+      } else if (this.chargePower <= 0) {
+        this.chargePower = 0;
+        this.chargeDirection = 1;
+      }
+      document.getElementById('charge-fill').style.width = `${this.chargePower}%`;
+      document.getElementById('charge-txt').innerText = `${Math.round(this.chargePower)}%`;
+    }
+
+    this.ctx.drawImage(this.terrain.canvas, 0, 0);
+
+    this.p1.updatePhysics(this.terrain, this.particles);
+    this.bot.updatePhysics(this.terrain, this.particles);
+    this.p1.draw(this.ctx);
+    this.bot.draw(this.ctx);
+
+    this.particles.updateAndDraw(this.ctx);
+
+    if (this.currentTurn === 'p1' && !this.isFiring && !this.isGameOver) {
+      this.ctx.strokeStyle = 'rgba(88, 166, 255, 0.4)';
+      this.ctx.setLineDash([4, 4]);
+      this.ctx.beginPath();
+      const rad = (this.p1.angle * Math.PI) / 180;
+      this.ctx.moveTo(this.p1.x, this.p1.y - 8);
+      this.ctx.lineTo(this.p1.x + Math.cos(rad) * 45, (this.p1.y - 8) - Math.sin(rad) * 45);
+      this.ctx.stroke();
+      this.ctx.setLineDash([]);
+    }
+
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.update(this.particles);
+      p.draw(this.ctx);
+
+      if (this.terrain.isSolid(p.x, p.y)) {
+        AudioFX.playExplosion(p.shotType === 'SS');
+        this.particles.spawnExplosion(p.x, p.y, p.craterRadius, p.shotType === 'SS' ? '#d2a8ff' : '#f0883e');
+        this.terrain.createCrater(p.x, p.y, p.craterRadius);
+        this.areaDmg(p.x, p.y, p.damage, p.owner, p.shotType);
+        p.active = false;
+      } else {
+        [this.p1, this.bot].forEach(u => {
+          if (u !== p.owner && Math.hypot(p.x - u.x, p.y - (u.y - 6)) < 22) {
+            AudioFX.playExplosion(p.shotType === 'SS');
+            this.particles.spawnExplosion(p.x, p.y, p.craterRadius, '#f85149');
+            
+            const dealt = p.damage * (1 / u.stats.def);
+            u.hp -= dealt;
+            
+            // Carga do SS ao causar e receber dano
+            p.owner.addSSCharge(dealt * 0.6);
+            u.addSSCharge(dealt * 0.4);
+
+            this.terrain.createCrater(p.x, p.y, p.craterRadius);
+            p.active = false;
+          }
+        });
+      }
+
+      if (!p.active) {
+        this.projectiles.splice(i, 1);
+        if (this.projectiles.length === 0) {
+          this.isFiring = false;
+          this.checkEnd();
+          if (this.p1.hp > 0 && this.bot.hp > 0) this.nextTurn();
+        }
+      }
+    }
+
+    requestAnimationFrame(() => this.loop());
+  }
+
+  areaDmg(x, y, d, attacker, shotType) {
+    [this.p1, this.bot].forEach(u => {
+      const dist = Math.hypot(x - u.x, y - u.y);
+      const rad = shotType === 'SS' ? 65 : 44;
+      if (dist < rad) {
+        const falloff = (1 - dist / rad);
+        const dealt = d * falloff * (1 / u.stats.def);
+        u.hp -= dealt;
+        if (attacker && attacker !== u) {
+          attacker.addSSCharge(dealt * 0.6);
+        }
+        u.addSSCharge(dealt * 0.4);
+      }
+    });
+  }
+}
+
+// CONTROLADOR DE INTERFACE
+const GameApp = {
+  game: null,
+  tempHero: null,
+  init() {
+    const s = StorageManager.load();
+    document.getElementById('player-profile-badge').innerText = `Nível ${s.profile.level} • ${s.profile.wins} Vitórias • ${s.profile.crystals} Cristais`;
+    this.fillSelects();
+    this.applyLoadout(s.selectedLoadout);
+    this.updatePlayerEquips();
+  },
+  fillSelects() {
+    const f = (id, list) => {
+      document.getElementById(id).innerHTML = list.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+    };
+    f('sel-helmet', EQUIP_DATABASE.helmet);
+    f('sel-armor', EQUIP_DATABASE.armor);
+    f('sel-weapon', EQUIP_DATABASE.weapon);
+    f('sel-wheels', EQUIP_DATABASE.wheels);
+    f('sel-trinket', EQUIP_DATABASE.trinket);
+  },
+  applyLoadout(l) {
+    if (!l) return;
+    ['helmet', 'armor', 'weapon', 'wheels', 'trinket'].forEach(k => {
+      if (l[k] && document.getElementById(`sel-${k}`)) document.getElementById(`sel-${k}`).value = l[k];
+    });
+  },
+  selectShotType(type) {
+    if (this.game) {
+      if (type === 'SS' && this.game.p1.ssCharge < 100) return;
+      this.game.selectedShot = type;
+    }
+    document.querySelectorAll('.shot-btn').forEach(b => b.classList.remove('active'));
+    if (type === 'T1') document.getElementById('btn-shot-1')?.classList.add('active');
+    if (type === 'T2') document.getElementById('btn-shot-2')?.classList.add('active');
+    if (type === 'SS') document.getElementById('btn-shot-ss')?.classList.add('active');
+  },
+  goToMenu() {
+    document.getElementById('equip-screen').classList.add('hidden');
+    document.getElementById('menu-screen').classList.remove('hidden');
+  },
+  goToCustomization() {
+    document.getElementById('menu-screen').classList.add('hidden');
+    document.getElementById('gameover-screen').classList.add('hidden');
+    document.getElementById('equip-screen').classList.remove('hidden');
+    this.updatePlayerEquips();
+  },
+  resetProgress() {
+    if (confirm('Deseja resetar seu progresso?')) {
+      const s = StorageManager.recordMatch(false);
+      s.profile = { level: 1, xp: 0, crystals: 100, wins: 0, matches: 0 };
+      StorageManager.save(s);
+      location.reload();
+    }
+  },
+  updatePlayerEquips() {
+    if (!this.tempHero) this.tempHero = new KartHero(130, 'p1', 'Zephyr');
+    ['helmet', 'armor', 'weapon', 'wheels', 'trinket'].forEach(k => {
+      const id = document.getElementById(`sel-${k}`).value;
+      this.tempHero.equips[k] = EQUIP_DATABASE[k].find(i => i.id === id);
+    });
+    this.tempHero.recalculateStats();
+
+    const s = StorageManager.load();
+    s.selectedLoadout = {
+      helmet: document.getElementById('sel-helmet').value,
+      armor: document.getElementById('sel-armor').value,
+      weapon: document.getElementById('sel-weapon').value,
+      wheels: document.getElementById('sel-wheels').value,
+      trinket: document.getElementById('sel-trinket').value
+    };
+    StorageManager.save(s);
+
+    document.getElementById('stat-atk').innerText = `Ataque: ${(this.tempHero.stats.atk * 100).toFixed(0)}%`;
+    document.getElementById('stat-def').innerText = `Defesa: ${(this.tempHero.stats.def * 100).toFixed(0)}%`;
+    document.getElementById('stat-acc').innerText = `Precisão: ${(this.tempHero.stats.acc * 100).toFixed(0)}%`;
+    document.getElementById('stat-mob').innerText = `Mobilidade: ${(this.tempHero.stats.mob * 100).toFixed(0)}%`;
+    document.getElementById('synergy-list').innerHTML = this.tempHero.activeSynergies.map(x => `<div class="synergy-chip">✨ ${x}</div>`).join('') || '<span style="color:#8b949e">Sem sinergias</span>';
+
+    const c = document.getElementById('previewCanvas');
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    const px = this.tempHero.x, py = this.tempHero.y;
+    this.tempHero.x = 90; this.tempHero.y = 80;
+    this.tempHero.draw(ctx);
+    this.tempHero.x = px; this.tempHero.y = py;
+  },
+  startMatch() {
+    AudioFX.init();
+    document.getElementById('equip-screen').classList.add('hidden');
+    this.game = new GameManager();
+    this.game.p1.equips = { ...this.tempHero.equips };
+    this.game.p1.recalculateStats();
+    this.selectShotType('T1');
+    this.game.start();
+  }
+};
+
+window.addEventListener('DOMContentLoaded', () => GameApp.init());
+</script>
+</body>
+</html>
